@@ -1,5 +1,5 @@
 from panda3d.core import Vec3, Point3, Quat, BitMask32
-from panda3d.bullet import BulletCapsuleShape, BulletRigidBodyNode
+from panda3d.bullet import BulletCapsuleShape, BulletRigidBodyNode, BulletGhostNode
 
 import math
 
@@ -74,7 +74,6 @@ class PandaBulletCharacterController(object):
         self.__walkCapsuleNP.setCollideMask(*args)
         self.__crouchCapsuleNP.setCollideMask(*args)
     
-    
     def setFallCallback(self, method, args=[], kwargs={}):
         """
         Callback called when the character falls on thge ground.
@@ -115,8 +114,8 @@ class PandaBulletCharacterController(object):
         self.isCrouching = True
         self.__enabledCrouch = True
         
-        self.__capsule = self.__crouchCapsule
-        self.__capsuleNP = self.__crouchCapsuleNP
+        self.capsule = self.__crouchCapsule
+        self.capsuleNP = self.__crouchCapsuleNP
         
         self.__capsuleH, self.__levitation, self.__capsuleR, self.__h = self.__crouchCapsuleH, self.__crouchLevitation, self.__crouchCapsuleR, self.__crouchH
         
@@ -240,8 +239,8 @@ class PandaBulletCharacterController(object):
         
         self.isCrouching = False
         
-        self.__capsule = self.__walkCapsule
-        self.__capsuleNP = self.__walkCapsuleNP
+        self.capsule = self.__walkCapsule
+        self.capsuleNP = self.__walkCapsuleNP
         
         self.__capsuleH, self.__levitation, self.__capsuleR, self.__h = self.__walkCapsuleH, self.__walkLevitation, self.__walkCapsuleR, self.__walkH
         
@@ -304,7 +303,7 @@ class PandaBulletCharacterController(object):
     def __checkFutureSpace(self, globalVel):
         globalVel = globalVel * self.futureSpacePredictionDistance
         
-        pFrom = Point3(self.__capsuleNP.getPos(render) + globalVel)
+        pFrom = Point3(self.capsuleNP.getPos(render) + globalVel)
         pUp = Point3(pFrom + Point3(0, 0, self.__capsuleH * 2.0))
         pDown = Point3(pFrom - Point3(0, 0, self.__capsuleH * 2.0 + self.__levitation))
         
@@ -320,14 +319,14 @@ class PandaBulletCharacterController(object):
         
         space = abs(upTest.getHitPos().z - downTest.getHitPos().z)
         
-        if space < self.__levitation + self.__capsuleH + self.__capsule.getRadius():
+        if space < self.__levitation + self.__capsuleH + self.capsule.getRadius():
             return False
         
         return True
     
     
     def __updateFootContact(self):
-        pFrom = Point3(self.__capsuleNP.getPos(render))
+        pFrom = Point3(self.capsuleNP.getPos(render))
         pTo = Point3(pFrom - Point3(0, 0, self.__footDistance))
         rayTest = self.__world.rayTestClosest(pFrom, pTo)
         
@@ -338,7 +337,7 @@ class PandaBulletCharacterController(object):
         self.__footContact = [rayTest.getHitPos(), rayTest.getNode(), rayTest.getHitNormal()]
     
     def __updateHeadContact(self):
-        pFrom = Point3(self.__capsuleNP.getPos(render))
+        pFrom = Point3(self.capsuleNP.getPos(render))
         pTo = Point3(pFrom + Point3(0, 0, self.__capsuleH * 20.0))
         rayTest = self.__world.rayTestClosest(pFrom, pTo)
         
@@ -349,7 +348,7 @@ class PandaBulletCharacterController(object):
     
     def __updateCapsule(self):
         self.movementParent.setPos(self.__currentPos)
-        self.__capsuleNP.setPos(0, 0, self.__capsuleOffset)
+        self.capsuleNP.setPos(0, 0, self.__capsuleOffset)
         
         self.__capsuleTop = self.__currentPos.z + self.__levitation + self.__capsuleH * 2.0
     
@@ -396,10 +395,10 @@ class PandaBulletCharacterController(object):
         ##########################################################
         # This is a hacky version for when contactTest didn't work
         #~ for mf in self.__world.getManifolds():
-            #~ if not (mf.getNumManifoldPoints() and self.__capsuleNP.node() in [mf.getNode0(), mf.getNode1()]):
+            #~ if not (mf.getNumManifoldPoints() and self.capsuleNP.node() in [mf.getNode0(), mf.getNode1()]):
                 #~ continue
             #~ 
-            #~ sign = 1 if mf.getNode0() == self.__capsuleNP.node() else -1
+            #~ sign = 1 if mf.getNode0() == self.capsuleNP.node() else -1
             #~ 
             #~ for mpoint in mf.getManifoldPoints():
                 #~ direction = mpoint.getPositionWorldOnB() - mpoint.getPositionWorldOnA()
@@ -409,9 +408,12 @@ class PandaBulletCharacterController(object):
                 #~ if mpoint.getDistance() < 0:
                     #~ collisions -= direction * mpoint.getDistance() * 2.0 * sign
         
-        result = self.__world.contactTest(self.__capsuleNP.node())
+        result = self.__world.contactTest(self.capsuleNP.node())
         
         for i, contact in enumerate(result.getContacts()):
+            if type(contact.getNode1()) is BulletGhostNode:
+                continue
+            
             mpoint = contact.getManifoldPoint()
             normal = mpoint.getPositionWorldOnB() - mpoint.getPositionWorldOnA()
             
@@ -439,12 +441,23 @@ class PandaBulletCharacterController(object):
         self.setP = self.movementParent.setP
         self.setR = self.movementParent.setR
         
-        self.setPos = self.movementParent.setPos
-        self.setX = self.movementParent.setX
-        self.setY = self.movementParent.setY
-        self.setZ = self.movementParent.setZ
-        
         self.setQuat = self.movementParent.setQuat
+    
+    def setPos(self, *args):
+        self.movementParent.setPos(*args)
+        self.__currentPos = self.movementParent.getPos(render)
+    
+    def setX(self, *args):
+        self.movementParent.setX(*args)
+        self.__currentX = self.movementParent.getX(render)
+    
+    def setY(self, *args):
+        self.movementParent.setY(*args)
+        self.__currentY = self.movementParent.getY(render)
+    
+    def setZ(self, *args):
+        self.movementParent.setZ(*args)
+        self.__currentZ = self.movementParent.getZ(render)
     
     def __setup(self, walkH, crouchH, stepH, R):
         def setData(fullH, stepH, R):
@@ -491,8 +504,8 @@ class PandaBulletCharacterController(object):
         self.__crouchCapsuleNP.setCollideMask(BitMask32.allOn())
         
         # Set default
-        self.__capsule = self.__walkCapsule
-        self.__capsuleNP = self.__walkCapsuleNP
+        self.capsule = self.__walkCapsule
+        self.capsuleNP = self.__walkCapsuleNP
         
         # Init
         self.__updateCapsule()
