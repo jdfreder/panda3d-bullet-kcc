@@ -223,15 +223,22 @@ class Game(DirectObject):
         
         
         shape = BulletBoxShape(Vec3(1, 1, 2.5))
-        np = self.worldNP.attachNewNode(BulletGhostNode('Ghost'))
-        np.node().addShape(shape)
-        np.setPos(-5.0, 0, 2.5)
-        np.setCollideMask(BitMask32.allOn())
-        self.world.attachGhost(np.node())
+        self.ghost = self.worldNP.attachNewNode(BulletGhostNode('Ghost'))
+        self.ghost.node().addShape(shape)
+        self.ghost.setPos(-5.0, 0, 3)
+        self.ghost.setCollideMask(BitMask32.allOn())
+        self.world.attachGhost(self.ghost.node())
         
+        taskMgr.add(self.checkGhost, 'checkGhost')
         
         self.character = PandaBulletCharacterController(self.world, self.worldNP, 1.75, 1.3, 0.5, 0.4)
         self.character.setPos(render, Point3(0, 0, 0.5))
+    
+    def checkGhost(self, task):
+        ghost = self.ghost.node()
+        for node in ghost.getOverlappingNodes():
+            print "Ghost collides with", node
+        return task.cont
 
 game = Game()
 run()

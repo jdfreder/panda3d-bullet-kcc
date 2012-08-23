@@ -330,7 +330,7 @@ class PandaBulletCharacterController(object):
         pTo = Point3(pFrom - Point3(0, 0, self.__footDistance))
         rayTest = self.__world.rayTestClosest(pFrom, pTo)
         
-        if not rayTest.hasHit():
+        if not rayTest.hasHit() or type(rayTest.getNode()) is BulletGhostNode:
             self.__footContact = None
             return
         
@@ -341,10 +341,10 @@ class PandaBulletCharacterController(object):
         pTo = Point3(pFrom + Point3(0, 0, self.__capsuleH * 20.0))
         rayTest = self.__world.rayTestClosest(pFrom, pTo)
         
-        if rayTest.hasHit():
-            self.__headContact = [rayTest.getHitPos(), rayTest.getNode()]
-        else:
+        if not rayTest.hasHit() or type(rayTest.getNode()) is BulletGhostNode:
             self.__headContact = None
+        else:
+            self.__headContact = [rayTest.getHitPos(), rayTest.getNode()]
     
     def __updateCapsule(self):
         self.movementParent.setPos(self.__currentPos)
