@@ -328,23 +328,38 @@ class PandaBulletCharacterController(object):
     def __updateFootContact(self):
         pFrom = Point3(self.capsuleNP.getPos(render))
         pTo = Point3(pFrom - Point3(0, 0, self.__footDistance))
-        rayTest = self.__world.rayTestClosest(pFrom, pTo)
+        result = self.__world.rayTestAll(pFrom, pTo)
         
-        if not rayTest.hasHit() or type(rayTest.getNode()) is BulletGhostNode:
+        if not result.hasHits():
             self.__footContact = None
             return
         
-        self.__footContact = [rayTest.getHitPos(), rayTest.getNode(), rayTest.getHitNormal()]
+        sorted_hits = sorted(result.getHits(), key = lambda hit: (pFrom - hit.getHitPos()).length())
+        
+        for hit in sorted_hits:
+            if type(hit.getNode()) is BulletGhostNode:
+                continue
+            
+            self.__footContact = [hit.getHitPos(), hit.getNode(), hit.getHitNormal()]
+            break
     
     def __updateHeadContact(self):
         pFrom = Point3(self.capsuleNP.getPos(render))
         pTo = Point3(pFrom + Point3(0, 0, self.__capsuleH * 20.0))
-        rayTest = self.__world.rayTestClosest(pFrom, pTo)
+        result = self.__world.rayTestAll(pFrom, pTo)
         
-        if not rayTest.hasHit() or type(rayTest.getNode()) is BulletGhostNode:
+        if not result.hasHits():
             self.__headContact = None
-        else:
-            self.__headContact = [rayTest.getHitPos(), rayTest.getNode()]
+            return
+        
+        sorted_hits = sorted(result.getHits(), key = lambda hit: (pFrom - hit.getHitPos()).length())
+        
+        for hit in sorted_hits:
+            if type(hit.getNode()) is BulletGhostNode:
+                continue
+            
+            self.__headContact = [hit.getHitPos(), hit.getNode()]
+            break
     
     def __updateCapsule(self):
         self.movementParent.setPos(self.__currentPos)
