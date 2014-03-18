@@ -164,7 +164,7 @@ class PandaBulletCharacterController(object):
     def setLinearMovement(self, speed, *args):
         self.__linearVelocity = speed
     
-    def update(self):
+    def update(self, timestep=None):
         """
         Update method. Call this around doPhysics.
         """
@@ -175,7 +175,10 @@ class PandaBulletCharacterController(object):
             "flying": self.__processFlying,
         }
         
-        self.__timeStep = globalClock.getDt()
+        if timestep is None:    
+            self.__timeStep = globalClock.getDt()
+        else:
+            self.__timeStep = timestep
         
         self.__updateFootContact()
         self.__updateHeadContact()
