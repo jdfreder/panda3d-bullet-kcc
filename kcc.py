@@ -192,11 +192,7 @@ class PandaBulletCharacterController(object):
         
         if self.isCrouching and not self.__enabledCrouch:
             self.__standUp()
-    
-    
-    
-    
-    
+
     def __land(self):
         self.movementState = "ground"
         print "new state", self.movementState
